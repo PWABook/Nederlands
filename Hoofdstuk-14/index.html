@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<link rel="manifest" href="manifest.json">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Offline Clock App</title>
+
+<!-- Inline CSS -->
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #282c34;
+    color: #61dafb;
+    flex-direction: column;
+  }
+  h1 {
+    font-size: 3em;
+    margin: 0;
+  }
+  p {
+    margin-top: 0.5em;
+    font-size: 1.2em;
+  }
+</style>
+
+</head>
+<body>
+
+<h1 id="time">--:--:--</h1>
+<p>Huidige tijd</p>
+
+<!-- Inline JavaScript -->
+<script>
+
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    console.log("Wake Lock is active");
+
+    wakeLock.addEventListener("release", () => {
+      console.log("Wake Lock was released — trying to re-acquire");
+      requestWakeLock();
+    });
+
+  } catch (err) {
+    console.error("WakeLock error:", err.name, err.message);
+  }
+}
+
+// Re-acquire when returning to the app
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    requestWakeLock();
+  }
+});
+
+// Start wake lock when the page loads
+window.addEventListener("load", () => {
+  requestWakeLock();
+});
+
+// Update the time every second
+function updateTime() {
+  const now = new Date();
+  document.getElementById('time').textContent = now.toLocaleTimeString();
+}
+setInterval(updateTime, 1000);
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(reg => console.log('SW registered:', reg.scope))
+    .catch(err => console.error('SW registration failed:', err));
+}
+</script>
+
+</body>
+</html>
