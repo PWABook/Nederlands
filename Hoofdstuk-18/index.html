@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<link rel="manifest" href="manifest.json">
+
+<meta charset="UTF-8">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+<title>Nieuwe Klok V2</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #e4ebfc;
+    color: #ff0000;
+    flex-direction: column;
+  }
+  h1 {
+    font-size: 3em;
+    margin: 0;
+  }
+  p {
+    margin-top: 0.5em;
+    font-size: 1.2em;
+  }
+
+  /* Floating install button */
+  #installBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 14px 22px;
+    font-size: 1.1em;
+    background: #ff0000;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    display: none;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  /* When visible */
+  #installBtn.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+
+#quitBtn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 14px 22px;
+  font-size: 1.1em;
+  background: #ff0000;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: block;      /* or remove this line */
+  opacity: 1;          /* make visible */
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+</style>
+
+</head>
+<body>
+
+<h1 id="time">--:--:--</h1>
+<p>Huidige tijd versie 2</p>
+
+<button id="installBtn">Install App</button>
+
+<button id="quitBtn" onclick="quitPWA()">Stop</button>
+
+<script>
+
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    console.log("Wake Lock is active");
+
+    wakeLock.addEventListener("release", () => {
+      console.log("Wake Lock was released — trying to re-acquire");
+      requestWakeLock();
+    });
+
+  } catch (err) {
+    console.error("WakeLock error:", err.name, err.message);
+  }
+}
+
+window.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    requestWakeLock();
+  }
+});
+
+window.addEventListener("load", () => {
+  requestWakeLock();
+});
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('time').textContent = now.toLocaleTimeString();
+}
+setInterval(updateTime, 1000);
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(reg => console.log('SW registered:', reg.scope))
+    .catch(err => console.error('SW registration failed:', err));
+}
+
+/* ---------------------------
+   CUSTOM INSTALL BUTTON LOGIC
+---------------------------- */
+
+let deferredPrompt;
+const installBtn = document.getElementById("installBtn");
+
+// Fired when PWA can be installed
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Show floating button with animation
+  installBtn.classList.add("show");
+});
+
+// When user clicks install button
+installBtn.addEventListener("click", async () => {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt();
+
+  const choice = await deferredPrompt.userChoice;
+  console.log("User choice:", choice.outcome);
+
+  deferredPrompt = null;
+
+  // Hide button after install
+  installBtn.classList.remove("show");
+});
+
+
+async function quitPWA() {
+  try {
+    // 1. Clear app state
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 2. Stop any background tasks (optional, if you have timers)
+    if (window.appInterval) clearInterval(window.appInterval);
+
+    // 3. Simulate “quit”
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      // Installed PWA: try to close window
+      window.open('', '_self');
+      window.close();
+    }
+
+    // 4. Fallback for browser/tab
+    window.location.href = 'about:blank';
+  } catch (err) {
+    window.location.href = 'about:blank';
+  }
+}
+
+</script>
+
+</body>
+</html>
+
