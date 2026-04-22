@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<link rel="manifest" href="manifest.json">
+
+<meta charset="UTF-8">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+<title>Nieuwe Klok V2</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #e4ebfc;
+    color: #ff0000;
+    flex-direction: column;
+  }
+  h1 {
+    font-size: 3em;
+    margin: 0;
+  }
+  p {
+    margin-top: 0.5em;
+    font-size: 1.2em;
+  }
+
+  /* Floating install button */
+  #installBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 14px 22px;
+    font-size: 1.1em;
+    background: #ff0000;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    display: none;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  /* When visible */
+  #installBtn.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+
+#quitBtn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 14px 22px;
+  font-size: 1.1em;
+  background: #ff0000;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: block;      /* or remove this line */
+  opacity: 1;          /* make visible */
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+</style>
+
+</head>
+<body>
+
+<h1 id="time">--:--:--</h1>
+<p>Huidige tijd</p>
+<p id="device" >Deze web app draait momenteel
+<br>
+op een : </p>
+
+<button id="installBtn">Install App</button>
+
+<button id="quitBtn" onclick="quitPWA()">Stop</button>
+
+<script>
+
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    console.log("Wake Lock is active");
+
+    wakeLock.addEventListener("release", () => {
+      console.log("Wake Lock was released — trying to re-acquire");
+      requestWakeLock();
+    });
+
+  } catch (err) {
+    console.error("WakeLock error:", err.name, err.message);
+  }
+}
+
+window.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    requestWakeLock();
+  }
+});
+
+window.addEventListener("load", () => {
+  requestWakeLock();
+});
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('time').textContent = now.toLocaleTimeString();
+}
+setInterval(updateTime, 1000);
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(reg => console.log('SW registered:', reg.scope))
+    .catch(err => console.error('SW registration failed:', err));
+}
+
+/* ---------------------------
+   CUSTOM INSTALL BUTTON LOGIC
+---------------------------- */
+
+let deferredPrompt;
+const installBtn = document.getElementById("installBtn");
+
+// Fired when PWA can be installed
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Show floating button with animation
+  installBtn.classList.add("show");
+});
+
+// When user clicks install button
+installBtn.addEventListener("click", async () => {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt();
+
+  const choice = await deferredPrompt.userChoice;
+  console.log("User choice:", choice.outcome);
+
+  deferredPrompt = null;
+
+  // Hide button after install
+  installBtn.classList.remove("show");
+});
+
+
+async function quitPWA() {
+  try {
+    // 1. Clear app state
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 2. Stop any background tasks (optional, if you have timers)
+    if (window.appInterval) clearInterval(window.appInterval);
+
+    // 3. Simulate “quit”
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      // Installed PWA: try to close window
+      window.open('', '_self');
+      window.close();
+    }
+
+    // 4. Fallback for browser/tab
+    window.location.href = 'about:blank';
+  } catch (err) {
+    window.location.href = 'about:blank';
+  }
+}
+
+/* ---------------------
+  Telefoon, tablet of PC
+  ----------------------
+*/
+
+function getDeviceType() {
+  const ua = navigator.userAgent || '';
+  const userAgentData = navigator.userAgentData;
+
+  // Modern Client Hints (Chrome/Edge 2022+)
+  if (userAgentData && userAgentData.mobile !== undefined) {
+    if (userAgentData.mobile) {
+      // Further distinguish phone vs tablet using screen size
+      if (window.innerWidth < 600 || window.screen.width < 600) {
+        return 'phone';
+      }
+      return 'tablet';
+    }
+  }
+
+  // Touch capability check (very reliable for phones/tablets/TVs)
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 1;
+
+  // Screen size (very effective for distinguishing phone/tablet/desktop)
+  const width = Math.min(window.innerWidth, window.screen.width);
+
+  // User-Agent regex patterns (fallback + TV detection)
+  const isMobileUA = /Mobi|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const isTabletUA = /Tablet|iPad|PlayBook|Silk|Android(?!.*Mobi)/i.test(ua);
+  const isSmartTV = /SmartTV|Smart-TV|WebTV|TV|NETTV|LG WebOS|Tizen|VIDAA|Hisense|Android TV|GoogleTV|CrKey|roku/i.test(ua);
+
+  if (isSmartTV || /TV/i.test(ua)) {
+    return 'tv';
+  }
+
+  if (hasTouch) {
+    if (width < 600 || isMobileUA) {
+      return 'phone';
+    }
+    if (width < 1024 || isTabletUA) {
+      return 'tablet';
+    }
+  }
+
+  // Desktop / Laptop
+  return 'pc';
+}
+
+// Usage
+const device = getDeviceType();
+console.log(`Running on: ${device}`);
+
+if (device === 'phone') {
+  document.getElementById('device').innerHTML = "Deze web app draait momenteel<br> op een telefoon";
+} else if (device === 'tablet') {
+  document.getElementById('device').innerHTML = "Deze web app draait momenteel<br> op een tablet";
+} else if (device === 'tv') {
+    document.getElementById('device').innerHTML = "Deze web app draait momenteel<br> op een televisie";;
+} else {
+  document.getElementById('device').innerHTML = "Deze web app draait momenteel<br> op een desktop computer";;
+}
+
+</script>
+
+</body>
+</html>
+
