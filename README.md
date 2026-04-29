@@ -1,2 +1,2 @@
 # Nederlands
-De files voor de Nederlandstalige versie van het boek
+De bestanden voor de Nederlandstalige versie van het boek
