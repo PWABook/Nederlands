@@ -1,0 +1,27 @@
+{
+  "id": "On-offline",
+  "name": "On-Offline Demo",
+  "short_name": "onoff demo",
+  "description": "Een web app die online en offline werkt",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e4ebfc",
+  "theme_color": "#ff66ff",
+  "categories": ["lifestyle", "utilities"],
+
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

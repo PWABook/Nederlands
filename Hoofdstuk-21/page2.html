@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="theme-color" content="#ff66ff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Page 2</title>
+  <link rel="manifest" href="manifest.json">
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      // De '/' aan het begin van 'sw.js' en de scope zijn cruciaal
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(reg => console.log('SW Actief op scope:', reg.scope))
+        .catch(err => console.error('SW Registratie mislukt:', err));
+    });
+  }
+</script>
+  <style>
+    body { font-family: sans-serif; padding: 20px;
+        background-color: #e4ebfc;}
+  </style>
+</head>
+<body>
+  <h1>Page 2 (Online Only)</h1>
+  <p>This page is always fetched from the server.</p>
+  <a href="/index.html">Back to Index</a>
+</body>
+</html>
