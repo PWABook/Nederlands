@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PWA Text Opener</title>
+<link rel="manifest" href="manifest.json">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 2rem;
+    max-width: 600px;
+  }
+  textarea {
+    width: 100%;
+    height: 300px;
+    padding: 1rem;
+    font-size: 1rem;
+  }
+  #info {
+    margin-bottom: 1rem;
+    color: #555;
+  }
+</style>
+
+<script>
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+
+  // Handle file launch events (File Handling API)
+  if ('launchQueue' in window) {
+    launchQueue.setConsumer(async launchParams => {
+      if (!launchParams.files.length) return;
+
+      const fileHandle = launchParams.files[0];
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+
+      document.getElementById('info').textContent =
+        "Opened file: " + file.name;
+
+      document.getElementById('text').value = text;
+    });
+  }
+</script>
+</head>
+
+<body>
+<h1>PWA Text Opener</h1>
+<p id="info">Open a .txt file via your OS to see its contents here.</p>
+<textarea id="text" placeholder="File contents will appear here..."></textarea>
+</body>
+</html>
